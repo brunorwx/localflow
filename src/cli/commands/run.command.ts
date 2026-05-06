@@ -28,7 +28,8 @@ export function registerRunCommand(program: Command): void {
     .description('Run a CI job locally in Docker')
     .option('-f, --file <path>', 'explicit CI file path')
     .option('-d, --dir <path>', 'project directory to mount (default: cwd)', process.cwd())
-    .action(async (jobId: string, opts: { file?: string; dir: string }) => {
+    .option('-i, --image <image>', 'override the Docker image for the job')
+    .action(async (jobId: string, opts: { file?: string; dir: string; image?: string }) => {
       const cwd = resolve(opts.dir);
 
       let files: ParsedCiFile[];
@@ -51,11 +52,15 @@ export function registerRunCommand(program: Command): void {
         for (const w of pipeline.warnings) logger.warn(w);
       }
 
-      const job = findJob(files, jobId);
+      let job = findJob(files, jobId);
       if (!job) {
         logger.error('Job "' + jobId + '" not found.');
         listAvailableJobs(files);
         process.exit(1);
+      }
+
+      if (opts.image) {
+        job = { ...job, image: opts.image };
       }
 
       if (job.needs && job.needs.length > 0) {
